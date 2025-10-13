@@ -12,7 +12,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2, ExternalLink } from "lucide-react";
+import { CheckCircle2, ExternalLink, Copy, Check } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -25,6 +26,9 @@ type FormData = z.infer<typeof formSchema>;
 
 const LeadForm = () => {
   const [submitted, setSubmitted] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState("");
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
 
   const {
     register,
@@ -39,7 +43,26 @@ const LeadForm = () => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log("Form submitted:", data);
+    setSubmittedEmail(data.email);
     setSubmitted(true);
+  };
+
+  const copyToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(submittedEmail);
+      setCopied(true);
+      toast({
+        title: "Email copied!",
+        description: "Email address copied to clipboard",
+      });
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Please try again",
+        variant: "destructive",
+      });
+    }
   };
 
   if (submitted) {
@@ -55,6 +78,27 @@ const LeadForm = () => {
             <p className="text-xl text-muted-foreground">
               Thank you for your interest. We'll notify you when Corposale launches.
             </p>
+            
+            <div className="bg-card rounded-lg p-4 border border-border max-w-md mx-auto">
+              <p className="text-sm text-muted-foreground mb-2">Registered Email</p>
+              <div className="flex items-center gap-2">
+                <code className="flex-1 text-foreground font-mono text-sm bg-accent px-3 py-2 rounded">
+                  {submittedEmail}
+                </code>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={copyToClipboard}
+                  className="shrink-0"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+            </div>
             
             <Button
               size="lg"
