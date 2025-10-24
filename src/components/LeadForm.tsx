@@ -28,6 +28,7 @@ const LeadForm = () => {
   const [submitted, setSubmitted] = useState(false);
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [copied, setCopied] = useState(false);
+  const [faceBookLink, setFaceBookLink] = useState("https://chat.whatsapp.com/example");
   const { toast } = useToast();
 
   const {
@@ -43,6 +44,21 @@ const LeadForm = () => {
     // Simulate API call
     await new Promise((resolve) => setTimeout(resolve, 1000));
     console.log("Form submitted:", data);
+
+    const locationLinks: { [key: string]: string } = {
+      "bangalore": "https://www.facebook.com/groups/1321067659396729",
+      "noida": "https://www.facebook.com/groups/1197770975576336",
+      "mumbai": "https://www.facebook.com/groups/2088698548542011",
+      "gurugram": "https://www.facebook.com/groups/1712568552763078",
+      "pune": "https://www.facebook.com/groups/839356278417787",
+      "hyderabad":"https://www.facebook.com/groups/664408663062271",
+      "default": "https://chat.whatsapp.com/example",
+    };
+
+    const locationKey = data.location.toLowerCase().split(',')[0].trim();
+    const link = locationLinks[locationKey] || locationLinks["default"];
+    setFaceBookLink(link);
+
     setSubmittedEmail(data.email);
     setSubmitted(true);
   };
@@ -104,7 +120,7 @@ const LeadForm = () => {
               size="lg"
               variant="outline"
               className="shadow-soft"
-              onClick={() => window.open("https://chat.whatsapp.com/example", "_blank")}
+              onClick={() => window.open(faceBookLink, "_blank")}
             >
               Join Private Group
               <ExternalLink className="ml-2 h-5 w-5" />
