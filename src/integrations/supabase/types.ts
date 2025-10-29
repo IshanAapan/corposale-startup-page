@@ -41,6 +41,84 @@ export type Database = {
         }
         Relationships: []
       }
+      email_otps: {
+        Row: {
+          created_at: string
+          email: string
+          expires_at: string
+          id: string
+          otp: string
+          verified: boolean
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          expires_at: string
+          id?: string
+          otp: string
+          verified?: boolean
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          expires_at?: string
+          id?: string
+          otp?: string
+          verified?: boolean
+        }
+        Relationships: []
+      }
+      invite_codes: {
+        Row: {
+          created_at: string
+          email: string
+          id: string
+          invite_code: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          id?: string
+          invite_code: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          id?: string
+          invite_code?: string
+        }
+        Relationships: []
+      }
+      lead_submissions: {
+        Row: {
+          category: string
+          created_at: string
+          email: string
+          id: string
+          invite_code: string
+          location: string
+          name: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          email: string
+          id?: string
+          invite_code: string
+          location: string
+          name: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          email?: string
+          id?: string
+          invite_code?: string
+          location?: string
+          name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

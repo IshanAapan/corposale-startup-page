@@ -32,6 +32,10 @@ const LeadForm = () => {
   const [faceBookLink, setFaceBookLink] = useState("https://chat.whatsapp.com/example");
   const [emailValue, setEmailValue] = useState("");
   const [domainStatus, setDomainStatus] = useState<"valid" | "invalid" | "checking" | null>(null);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otp, setOtp] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [verifying, setVerifying] = useState(false);
   const { toast } = useToast();
 
   const {
@@ -99,26 +103,100 @@ const LeadForm = () => {
   }, [watch]);
 
   const onSubmit = async (data: FormData) => {
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    console.log("Form submitted:", data);
+    if (!otpSent) {
+      // First submission - send OTP
+      try {
+        const response = await supabase.functions.invoke("send-otp", {
+          body: {
+            email: data.email,
+            name: data.name,
+          },
+        });
 
-    const locationLinks: { [key: string]: string } = {
-      "bangalore": "https://www.facebook.com/groups/1321067659396729",
-      "noida": "https://www.facebook.com/groups/1197770975576336",
-      "mumbai": "https://www.facebook.com/groups/2088698548542011",
-      "gurugram": "https://www.facebook.com/groups/1712568552763078",
-      "pune": "https://www.facebook.com/groups/839356278417787",
-      "hyderabad":"https://www.facebook.com/groups/664408663062271",
-      "default": "https://chat.whatsapp.com/example",
-    };
+        if (response.error) {
+          throw response.error;
+        }
 
-    const locationKey = data.location.toLowerCase().split(',')[0].trim();
-    const link = locationLinks[locationKey] || locationLinks["default"];
-    setFaceBookLink(link);
+        toast({
+          title: "OTP Sent!",
+          description: "Please check your email for the verification code.",
+        });
 
-    setSubmittedEmail(data.email);
-    setSubmitted(true);
+        setOtpSent(true);
+      } catch (error: any) {
+        console.error("Error sending OTP:", error);
+        toast({
+          title: "Error",
+          description: "Failed to send OTP. Please try again.",
+          variant: "destructive",
+        });
+      }
+    }
+  };
+
+  const verifyOTP = async () => {
+    if (!otp || otp.length !== 6) {
+      toast({
+        title: "Invalid OTP",
+        description: "Please enter a valid 6-digit OTP.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setVerifying(true);
+
+    try {
+      const formData = watch();
+      const response = await supabase.functions.invoke("verify-otp", {
+        body: {
+          email: formData.email,
+          otp,
+          name: formData.name,
+          location: formData.location,
+          category: formData.category,
+        },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      const { inviteCode: code } = response.data;
+
+      // Set up Facebook group link
+      const locationLinks: { [key: string]: string } = {
+        "bangalore": "https://www.facebook.com/groups/1321067659396729",
+        "noida": "https://www.facebook.com/groups/1197770975576336",
+        "mumbai": "https://www.facebook.com/groups/2088698548542011",
+        "gurugram": "https://www.facebook.com/groups/1712568552763078",
+        "pune": "https://www.facebook.com/groups/839356278417787",
+        "hyderabad": "https://www.facebook.com/groups/664408663062271",
+        "default": "https://chat.whatsapp.com/example",
+      };
+
+      const locationKey = formData.location.toLowerCase().split(',')[0].trim();
+      const link = locationLinks[locationKey] || locationLinks["default"];
+
+      setFaceBookLink(link);
+      setInviteCode(code);
+      setSubmittedEmail(formData.email);
+      setSubmitted(true);
+
+      toast({
+        title: "Success!",
+        description: "Your registration is complete.",
+      });
+    } catch (error: any) {
+      console.error("Error verifying OTP:", error);
+      toast({
+        title: "Verification Failed",
+        description: "Invalid OTP. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const copyToClipboard = async () => {
@@ -153,24 +231,33 @@ const LeadForm = () => {
               Thank you for your interest. We'll notify you when Corposale launches.
             </p>
             
-            <div className="bg-card rounded-lg p-4 border border-border max-w-md mx-auto">
-              <p className="text-sm text-muted-foreground mb-2">Registered Email</p>
-              <div className="flex items-center gap-2">
-                <code className="flex-1 text-foreground font-mono text-sm bg-accent px-3 py-2 rounded">
-                  {submittedEmail}
+            <div className="bg-card rounded-lg p-4 border border-border max-w-md mx-auto space-y-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Registered Email</p>
+                <div className="flex items-center gap-2">
+                  <code className="flex-1 text-foreground font-mono text-sm bg-accent px-3 py-2 rounded">
+                    {submittedEmail}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={copyToClipboard}
+                    className="shrink-0"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-sm text-muted-foreground mb-2">Your Invite Code</p>
+                <code className="text-foreground font-mono text-2xl font-bold bg-accent px-4 py-3 rounded block">
+                  {inviteCode}
                 </code>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={copyToClipboard}
-                  className="shrink-0"
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
               </div>
             </div>
             
@@ -284,10 +371,40 @@ const LeadForm = () => {
               type="submit"
               size="lg"
               className="w-full h-12 text-lg shadow-soft hover:shadow-lg transition-smooth"
-              disabled={isSubmitting}
+              disabled={isSubmitting || domainStatus !== "valid" || otpSent}
             >
-              {isSubmitting ? "Submitting..." : "Join Early Access"}
+              {isSubmitting ? "Sending OTP..." : "Send Verification Code"}
             </Button>
+
+            {otpSent && (
+              <div className="space-y-4 pt-6 border-t">
+                <div className="space-y-2">
+                  <Label htmlFor="otp">Enter 6-Digit OTP</Label>
+                  <Input
+                    id="otp"
+                    type="text"
+                    placeholder="000000"
+                    maxLength={6}
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value.replace(/\D/g, ""))}
+                    className="h-12 text-center text-2xl tracking-widest"
+                  />
+                  <p className="text-sm text-muted-foreground text-center">
+                    Check your email for the verification code
+                  </p>
+                </div>
+
+                <Button
+                  type="button"
+                  size="lg"
+                  className="w-full h-12 text-lg shadow-soft hover:shadow-lg transition-smooth"
+                  onClick={verifyOTP}
+                  disabled={verifying || otp.length !== 6}
+                >
+                  {verifying ? "Verifying..." : "Verify & Complete Registration"}
+                </Button>
+              </div>
+            )}
           </form>
         </div>
       </div>
