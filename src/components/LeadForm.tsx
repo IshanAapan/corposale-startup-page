@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -12,8 +12,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { CheckCircle2, ExternalLink, Copy, Check } from "lucide-react";
+import { CheckCircle2, ExternalLink, Copy, Check, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters").max(100),
@@ -29,16 +30,73 @@ const LeadForm = () => {
   const [submittedEmail, setSubmittedEmail] = useState("");
   const [copied, setCopied] = useState(false);
   const [faceBookLink, setFaceBookLink] = useState("https://chat.whatsapp.com/example");
+  const [emailValue, setEmailValue] = useState("");
+  const [domainStatus, setDomainStatus] = useState<"valid" | "invalid" | "checking" | null>(null);
   const { toast } = useToast();
 
   const {
     register,
     handleSubmit,
     setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<FormData>({
     resolver: zodResolver(formSchema),
   });
+
+  const checkDomain = async (email: string) => {
+    if (!email || !email.includes("@")) {
+      setDomainStatus(null);
+      return;
+    }
+
+    const domain = email.split("@")[1]?.toLowerCase().trim();
+    if (!domain) {
+      setDomainStatus(null);
+      return;
+    }
+
+    setDomainStatus("checking");
+
+    try {
+      const { data, error } = await supabase
+        .from("company_domains")
+        .select("is_approved")
+        .eq("domain", domain)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Error checking domain:", error);
+        setDomainStatus("invalid");
+        return;
+      }
+
+      if (data && data.is_approved) {
+        setDomainStatus("valid");
+      } else {
+        setDomainStatus("invalid");
+      }
+    } catch (error) {
+      console.error("Error checking domain:", error);
+      setDomainStatus("invalid");
+    }
+  };
+
+  useEffect(() => {
+    const subscription = watch((value) => {
+      const email = value.email || "";
+      setEmailValue(email);
+      
+      // Debounce the domain check
+      const timer = setTimeout(() => {
+        checkDomain(email);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    });
+
+    return () => subscription.unsubscribe();
+  }, [watch]);
 
   const onSubmit = async (data: FormData) => {
     // Simulate API call
@@ -163,13 +221,25 @@ const LeadForm = () => {
 
             <div className="space-y-2">
               <Label htmlFor="email">Business Email ID</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="john.doe@company.com"
-                {...register("email")}
-                className="h-12"
-              />
+              <div className="relative">
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john.doe@company.com"
+                  {...register("email")}
+                  className="h-12 pr-10"
+                />
+                {domainStatus && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {domainStatus === "valid" && (
+                      <Check className="h-5 w-5 text-green-600" />
+                    )}
+                    {domainStatus === "invalid" && (
+                      <X className="h-5 w-5 text-red-600" />
+                    )}
+                  </div>
+                )}
+              </div>
               {errors.email && (
                 <p className="text-sm text-destructive">{errors.email.message}</p>
               )}
